@@ -1,0 +1,22 @@
+site_name: Processing PhenoCam
+theme:
+  name: material
+
+nav:
+  - Home: index.md
+  - Getting Started: getting_started.md
+  - API Reference:
+      - App: api/app.md
+      - Utils: api/utils.md
+      - Components: api/components.md
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - codehilite
+  - footnotes
+  - meta
+  - toc:
+      permalink: true
