@@ -1,0 +1,30 @@
+# poetry self add poetry-plugin-export  ## in case is not installed
+# poetry config warnings.export false  ## following last line
+# poetry update
+# poetry export --without-hashes --format=requirements.txt > requirements.txt 
+# twine upload -r pypi dist/*
+
+[tool.poetry]
+name = "sstc-core"
+version = "0.1.0"
+description = "A Streamlit application for processing PhenoCam data"
+authors = ["Jobelund <124563223+jobelund@users.noreply.github.com>"]
+readme = "README.md"
+packages = [{include = "processing_phenocam", from = "src"}]
+homepage = "https://pypi.org/project/sstc-core/"
+
+
+[tool.poetry.dependencies]
+python = "^3.11"
+mkdocs = "^1.5.3"
+streamlit = "^1.37.0"
+Pillow = "^9.0.0"
+pandas = "^1.3.3"
+sstc-core = "^0.10.3"
+
+[tool.poetry.dev-dependencies]
+pytest = "^6.2.5"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
