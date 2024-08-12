@@ -3,6 +3,7 @@ from typing import Any
 from sstc_core.sites.spectral.stations import Station
 
 
+
 def session_state(key: str, value: Any):
     """
     Set a session state value.

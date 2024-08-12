@@ -1,3 +1,7 @@
+## [v0.1.5]
+- Refactored app
+- Code pruning 
+
 ## [v0.1.4]
 - Stable but bulky 
 
