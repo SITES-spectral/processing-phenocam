@@ -1,3 +1,9 @@
+## [v0.1.4]
+- Stable but bulky 
+
+## [v0.1.3]
+- WIP
+
 ## [v0.1.2]
 - overlay of ROIs 
 

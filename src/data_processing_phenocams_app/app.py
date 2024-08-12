@@ -3,11 +3,10 @@ import cv2
 from sstc_core.sites.spectral import utils
 from data_processing_phenocams_app.utils import session_state, get_records_by_year_and_day_of_year, update_flags
 from data_processing_phenocams_app.components import side_menu_options, show_title, show_record, quality_flags_management
-from sstc_core.sites.spectral.utils import extract_keys_with_prefix   # solar_illumination_conditions
 from sstc_core.sites.spectral import image_quality
-from sstc_core.sites.spectral.stations import get_stations_names_dict, Station  # get_station_platform_geolocation_point
-from sstc_core.sites.spectral.data_products.qflags import get_solar_elevation_class, compute_qflag
-
+from sstc_core.sites.spectral.stations import get_stations_names_dict, get_station_platform_geolocation_point
+from sstc_core.sites.spectral.data_products.qflags import compute_qflag
+from sstc_core.sites.spectral.data_products import phenocams
 
 
 st.set_page_config(layout="wide")
@@ -60,75 +59,7 @@ def detect_snow_in_image(image_path: str, snow_detection_function, **kwargs) -> 
     cv2.destroyAllWindows()
     
 
-
-
-def get_station_platform_geolocation_point(station: Station, platforms_type: str, platform_id: str) -> tuple:
-    """
-    Retrieves the geolocation (latitude and longitude) of a specific platform for a given station.
-
-    Parameters:
-        station (Station): An instance of the Station class that contains metadata about the station and its platforms.
-        platforms_type (str): The type of platform (e.g., 'PhenoCams', 'UAVs', 'FixedSensors', 'Satellites').
-        platform_id (str): The identifier for the specific platform.
-
-    Returns:
-        tuple: A tuple containing the latitude and longitude of the platform in decimal degrees, in the format (latitude_dd, longitude_dd).
-
-    Example:
-        ```python
-        # Assuming you have an instance of Station
-        station = Station(db_dirpath="/path/to/db/dir", station_name="StationName")
-
-        # Retrieve the geolocation for a specific platform
-        platforms_type = 'PhenoCams'
-        platform_id = 'P_BTH_1'
-        latitude_dd, longitude_dd = get_station_platform_geolocation_point(station, platforms_type, platform_id)
-
-        print(f"Latitude: {latitude_dd}, Longitude: {longitude_dd}")
-        ```
-
-    Raises:
-        KeyError: If the specified platform type or platform ID does not exist in the station's metadata, or if the geolocation information is incomplete.
-
-    Note:
-        This function assumes that the geolocation information is available in the station's metadata under the specified platform type and platform ID. 
-        The geolocation should be stored in the format:
-            station.platforms[platforms_type][platform_id]['geolocation']['point']['latitude_dd']
-            station.platforms[platforms_type][platform_id]['geolocation']['point']['longitude_dd']
-    """
-    latitude_dd = station.platforms[platforms_type][platform_id]['geolocation']['point']['latitude_dd']
-    longitude_dd = station.platforms[platforms_type][platform_id]['geolocation']['point']['longitude_dd']
-    return latitude_dd, longitude_dd
-
-
-
-def solar_illumination_conditions(
-    latitude_dd:float,
-    longitude_dd:float,
-    record:dict,
-    timezone_str: str ='Europe/Stockholm' ):
-    
-    creation_date = record['creation_date'] 
-    sun_position = utils.calculate_sun_position(
-        datetime_str= creation_date,
-        latitude_dd=latitude_dd, 
-        longitude_dd=longitude_dd, 
-        timezone_str=timezone_str)
-    
-    sun_elevation_angle = sun_position['sun_elevation_angle']
-    sun_azimuth_angle = sun_position['sun_azimuth_angle']  
-    
-    
-    
-    solar_elevation_class = get_solar_elevation_class(sun_elevation=sun_elevation_angle)
-    
-    return {
-        'sun_elevation_angle': sun_elevation_angle,
-        'sun_azimuth_angle': sun_azimuth_angle,
-        'solar_elevation_class': solar_elevation_class
-        } 
-
-
+ 
 def run():
     """
     Main function to run the Streamlit app.
@@ -140,58 +71,98 @@ def run():
     if not all([station, table_name, year, _doy]):
         st.error("Please select all required options.")
         return
+    
+    phenocam_rois = station.phenocam_rois(
+        platforms_type=platforms_type,
+        platform_id=platform_id
+        )
+    p1, _, p3 = st.columns([ 2,1,1] )
+    
 
-    show_title(year, _doy)
+    
+    with p1:
+        show_title(year, _doy)
+
+
+    
     doy = f'{_doy:03}'
     records = get_records_by_year_and_day_of_year(station, table_name, year, doy)
 
+    
     if not records:
         st.error("No records found for the selected day of the year.")
         return
+    
+    
+    rois_dict = {
+        record['catalog_guid']: {
+            f'L2_{roi_name}_has_snow_presence': record[f'L2_{roi_name}_has_snow_presence']  
+            for roi_name in phenocam_rois.keys()
+        } 
+        for k, record in records.items()
+    }
+    
 
     images_name_and_guid = {records[k]["L0_name"]: k for k, v in records.items()}
-    image_name = st.sidebar.radio('Available Images', options=images_name_and_guid.keys())
+    image_name = st.sidebar.radio(
+        'Available Images', 
+        options=images_name_and_guid.keys())
     catalog_guid = images_name_and_guid[image_name]
     session_state('catalog_guid', catalog_guid)
     record = records[catalog_guid]
-    
-    
-    flags_dict = extract_keys_with_prefix(input_dict=record, starts_with='flag_')
-    session_state('flags_dict', flags_dict)
-
-    t1, t2 = st.columns([2, 1])
-    with t1:
-        st.write(f'**Image Name:** {image_name}')
+        
+    with p3:
         if st.button("Show DB Record"):
-            show_record(record=record)
+            show_record(record=record)    
         
-    with t2:
-        
-        if st.button(label='overlay ROIs'):
-            rois = station.platforms[platforms_type][platform_id]['phenocam_rois']  
-            st.write(rois)
-        
-        latitude_dd, longitude_dd = get_station_platform_geolocation_point(
+    flags_dict = utils.extract_keys_with_prefix(input_dict=record, starts_with='flag_')
+    session_state('flags_dict', flags_dict)
+    
+    p1.write(f'**Image Name:** {image_name}')
+    
+    latitude_dd, longitude_dd = get_station_platform_geolocation_point(
             station=station,
             platforms_type=platforms_type,
             platform_id=platform_id,
             )
-        solar_conditions = solar_illumination_conditions(
-            latitude_dd=latitude_dd,
-            longitude_dd=longitude_dd,
-            record=record, 
-            timezone_str='Europe/Stockholm')
     
-        sun_elevation_angle = solar_conditions['sun_elevation_angle'] 
-        sun_azimuth_angle = solar_conditions['sun_azimuth_angle'] 
-        solar_elevation_class = solar_conditions['solar_elevation_class'] 
-        
-        
+    ############################################
+           
+    sun_position = utils.calculate_sun_position(
+        datetime_str= record['creation_date'], 
+        latitude_dd=latitude_dd, 
+        longitude_dd=longitude_dd, 
+        timezone_str='Europe/Stockholm')
+    
+    sun_elevation_angle = sun_position['sun_elevation_angle']
+    sun_azimuth_angle = sun_position['sun_azimuth_angle'] 
+    solar_elevation_class = utils.get_solar_elevation_class(sun_elevation=sun_elevation_angle)
 
-
+    ################
+    rois_sums_dict = phenocams.rois_mask_and_sum(image_path=record['catalog_filepath'], phenocam_rois=phenocam_rois)
+    
+    l2_data_prep = phenocams.convert_rois_sums_to_single_dict(rois_sums_dict=rois_sums_dict)
+     
+    #################
+    
     c1, c2 = st.columns([3, 1])
     with c2:
+        st.markdown('')
+        show_overlay_rois = st.toggle(
+            label= f'Showing **{len(phenocam_rois)}** ROI(s)',
+            value=True)
         
+        if show_overlay_rois:
+            image_obj = phenocams.overlay_polygons(
+                image_path= record['catalog_filepath'],
+                phenocam_rois=phenocam_rois,
+                show_names=True,
+                font_scale=2.0    
+            )
+        else:
+            image_obj = record['catalog_filepath'] 
+            
+  
         has_snow_presence = st.toggle(
             label='has snow presence', 
             value= st.session_state.get(
@@ -199,7 +170,22 @@ def run():
                 False))
         
         session_state('has_snow_presence', has_snow_presence)
-  
+     
+        if has_snow_presence:
+            rois_list = sorted(list(phenocam_rois.keys()))
+            
+            rois = st.columns(len(rois_list))
+            for i, roi_name in enumerate(rois_list):
+                
+                with rois[i]:
+                    roi_has_snow_presence = st.session_state.get(f'{catalog_guid}_L2_{roi_name}_has_snow_presence', False)
+                    snow_in_roi = st.checkbox(
+                        label=roi_name,
+                        value= roi_has_snow_presence,
+                        label_visibility='visible'
+                        )
+                    session_state(f'{catalog_guid}_L2_{roi_name}_has_snow_presence', snow_in_roi)
+                    rois_dict[catalog_guid][f'L2_{roi_name}_has_snow_presence'] = snow_in_roi
         
         QFLAG_image = compute_qflag(
             latitude_dd=latitude_dd,
@@ -245,15 +231,19 @@ def run():
         if confirm_ready:
             updates['normalized_quality_index'] = normalized_quality_index
             updates['is_ready_for_products_use'] = is_ready_for_products_use
+            
+            update_rois ={**updates, **rois_dict[catalog_guid], **l2_data_prep} 
+            
             is_saved = station.update_record_by_catalog_guid(
                 table_name=table_name,
                 catalog_guid=catalog_guid, 
-                updates=updates)
+                updates=update_rois)
             st.toast(f'updates saved: {is_saved}')
                 
 
     with c1:
-        st.image(record["catalog_filepath"], use_column_width='auto')
+        
+        st.image(image_obj, use_column_width='auto')
 
 if __name__ == '__main__':
 
