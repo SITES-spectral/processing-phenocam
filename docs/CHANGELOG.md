@@ -1,3 +1,7 @@
+## [v0.1.5]
+- stable and functional. 
+- TODO: require better memory management for session_state 
+
 ## [v0.1.4]
 - Stable but bulky 
 

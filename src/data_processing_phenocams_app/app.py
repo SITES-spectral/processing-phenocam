@@ -142,7 +142,9 @@ def run():
     rois_sums_dict = phenocams.rois_mask_and_sum(image_path=record['catalog_filepath'], phenocam_rois=phenocam_rois)
     
     l2_data_prep = phenocams.convert_rois_sums_to_single_dict(rois_sums_dict=rois_sums_dict)
-     
+    
+    with st.sidebar.expander(label='L2 dataprep', expanded=False):
+        st.write(l2_data_prep)
     #################
     
     c1, c2 = st.columns([3, 1])
@@ -165,9 +167,7 @@ def run():
   
         has_snow_presence = st.toggle(
             label='has snow presence', 
-            value= st.session_state.get(
-                'has_snow_presence',
-                False))
+            value= record.get('has_snow_presence', False))
         
         session_state('has_snow_presence', has_snow_presence)
      
@@ -178,13 +178,14 @@ def run():
             for i, roi_name in enumerate(rois_list):
                 
                 with rois[i]:
-                    roi_has_snow_presence = st.session_state.get(f'{catalog_guid}_L2_{roi_name}_has_snow_presence', False)
+                    roi_has_snow_presence =  records[catalog_guid][f'L2_{roi_name}_has_snow_presence'] 
                     snow_in_roi = st.checkbox(
                         label=roi_name,
                         value= roi_has_snow_presence,
-                        label_visibility='visible'
+                        label_visibility='visible',
+                        key=f'{catalog_guid}_L2_{roi_name}_has_snow_presence'
                         )
-                    session_state(f'{catalog_guid}_L2_{roi_name}_has_snow_presence', snow_in_roi)
+                    
                     rois_dict[catalog_guid][f'L2_{roi_name}_has_snow_presence'] = snow_in_roi
         
         QFLAG_image = compute_qflag(
@@ -202,7 +203,7 @@ def run():
         updates['solar_elevation_class'] = record['solar_elevation_class']  = solar_elevation_class
         updates["QFLAG_image"] = record["QFLAG_image"] = QFLAG_image
         
-
+        st.divider()
         st.markdown(f'**sun azimuth angle**: {sun_azimuth_angle:.2f}') 
         sol1, sol2 = st.columns(2)
         with sol1:
@@ -221,13 +222,21 @@ def run():
                 quality_flags_dict=st.session_state['flags_dict'], weights=weights)
             st.metric(label='normalized quality index', value=f'{normalized_quality_index:.2f}')
 
-        if st.button('Confirm/Update Flags'):
-           
-            quality_flags_management(station, table_name, catalog_guid, record)
+        z1, z2 = st.columns(2)
+        with z1:
+            st.checkbox(label='flags confirmed', value= record['flags_confirmed'], disabled=True )
+        with z2:
+             if st.button('Confirm Flags'):
+                quality_flags_management(station, table_name, catalog_guid, record)
 
-        
-        is_ready_for_products_use = st.checkbox('Selected for Products Use', value=record['is_ready_for_products_use'])
-        confirm_ready = st.button(label='Confirm', key='is_ready_for_products_use_key')
+        st.divider()
+        w1, w2 = st.columns(2)
+        with w1:
+            
+            is_ready_for_products_use = st.checkbox('Ready for L2 & L3', value=record['is_ready_for_products_use'])
+        with w2:
+            
+            confirm_ready = st.button(label='SAVE Record', key='is_ready_for_products_use_key')
         if confirm_ready:
             updates['normalized_quality_index'] = normalized_quality_index
             updates['is_ready_for_products_use'] = is_ready_for_products_use
