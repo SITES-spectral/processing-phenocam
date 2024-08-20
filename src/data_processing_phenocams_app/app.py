@@ -86,7 +86,11 @@ def run():
 
     
     doy = f'{_doy:03}'
-    records = get_records_by_year_and_day_of_year(station, table_name, year, doy)
+    records = station.get_records_by_year_and_day_of_year(
+        table_name=table_name, 
+        year=year,
+        day_of_year=doy,
+        filters={"is_L1": True})
 
     
     if not records:
@@ -94,13 +98,13 @@ def run():
         return
     
     
-    rois_dict = {
-        record['catalog_guid']: {
-            f'L2_{roi_name}_has_snow_presence': record[f'L2_{roi_name}_has_snow_presence']  
-            for roi_name in phenocam_rois.keys()
-        } 
-        for k, record in records.items()
-    }
+    #rois_dict = {
+    #    record['catalog_guid']: {
+    #        f'{roi_name}_has_snow_presence': record[f'{roi_name}_has_snow_presence']  
+    #        for roi_name in phenocam_rois.keys()
+    #    } 
+    #    for k, record in records.items()
+    #}
     
 
     images_name_and_guid = {records[k]["L0_name"]: k for k, v in records.items()}
@@ -175,23 +179,32 @@ def run():
             rois_list = sorted(list(phenocam_rois.keys()))
             
             rois = st.columns(len(rois_list))
+            
             for i, roi_name in enumerate(rois_list):
                 
                 with rois[i]:
-                    roi_has_snow_presence =  records[catalog_guid][f'L2_{roi_name}_has_snow_presence'] 
+                    roi_has_snow_presence =  records[catalog_guid][f'L3_{roi_name}_has_snow_presence'] 
                     snow_in_roi = st.checkbox(
                         label=roi_name,
                         value= roi_has_snow_presence,
                         label_visibility='visible',
-                        key=f'{catalog_guid}_L2_{roi_name}_has_snow_presence'
+                        key=f'{catalog_guid}_L3_{roi_name}_has_snow_presence'
                         )
-                    
-                    rois_dict[catalog_guid][f'L2_{roi_name}_has_snow_presence'] = snow_in_roi
+            
+                    is_data_processing_disabled = records[catalog_guid][f'L3_{roi_name}_is_data_processing_disabled']  
+                    disable_roi = st.toggle(
+                        label=roi_name,
+                        value= is_data_processing_disabled,
+                        label_visibility='visible',
+                        key=f'{catalog_guid}_L3_{roi_name}_is_data_processing_disabled'
+                    )
+                   
+                    rois_dict[catalog_guid][f'L3_{roi_name}_has_snow_presence'] = snow_in_roi
+                    rois_dict[catalog_guid][f'L3_{roi_name}_is_data_processing_disabled'] = disable_roi
         
         QFLAG_image = compute_qflag(
             latitude_dd=latitude_dd,
             longitude_dd=longitude_dd,
-            has_snow_presence=has_snow_presence,
             records_dict={catalog_guid:record},
             timezone_str= 'Europe/Stockholm'
             )
@@ -201,7 +214,9 @@ def run():
         updates['sun_elevation_angle'] = record['sun_elevation_angle'] = sun_elevation_angle
         updates['sun_azimuth_angle'] = record['sun_azimuth_angle'] = sun_azimuth_angle
         updates['solar_elevation_class'] = record['solar_elevation_class']  = solar_elevation_class
-        updates["QFLAG_image"] = record["QFLAG_image"] = QFLAG_image
+        updates["QFLAG_image_value"] = record["QFLAG_image_value"] = QFLAG_image['QFLAG']
+        updates["QFLAG_image_weight"] = record["QFLAG_image_weight"] = QFLAG_image['weight']
+         
         
         st.divider()
         st.markdown(f'**sun azimuth angle**: {sun_azimuth_angle:.2f}') 
@@ -214,14 +229,14 @@ def run():
         
         m1, m2 = st.columns(2)
         with m1:
-            st.metric(label='QFLAG image', value=QFLAG_image)
+            st.metric(label='QFLAG image value', value=QFLAG_image['QFLAG'])
         with m2:
                 
-            weights = image_quality.load_weights_from_yaml(station.phenocam_quality_weights_filepath)
-            normalized_quality_index, quality_index_weights_version = image_quality.calculate_normalized_quality_index(
-                quality_flags_dict=st.session_state['flags_dict'], weights=weights)
-            st.metric(label='normalized quality index', value=f'{normalized_quality_index:.2f}')
-
+            # weights = image_quality.load_weights_from_yaml(station.phenocam_quality_weights_filepath)
+            #normalized_quality_index, quality_index_weights_version = image_quality.normailize_flags_weight(
+            #    flags_dict=
+            #st.metric(label='normalized quality index', value=f'{normalized_quality_index:.2f}')
+            st.metric(label='QFLAG image weight', value=QFLAG_image['weight'])
         z1, z2 = st.columns(2)
         with z1:
             st.checkbox(label='flags confirmed', value= record['flags_confirmed'], disabled=True )
@@ -238,10 +253,10 @@ def run():
             
             confirm_ready = st.button(label='SAVE Record', key='is_ready_for_products_use_key')
         if confirm_ready:
-            updates['normalized_quality_index'] = normalized_quality_index
+            # updates['normalized_quality_index'] = normalized_quality_index
             updates['is_ready_for_products_use'] = is_ready_for_products_use
             
-            update_rois ={**updates, **rois_dict[catalog_guid], **l2_data_prep} 
+            update_rois ={**updates,  **l2_data_prep}   # **rois_dict[catalog_guid]
             
             is_saved = station.update_record_by_catalog_guid(
                 table_name=table_name,

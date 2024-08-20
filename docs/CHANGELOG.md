@@ -1,3 +1,6 @@
+## [v0.1.6]
+- WIP 
+
 ## [v0.1.5]
 - stable and functional. 
 - TODO: require better memory management for session_state 

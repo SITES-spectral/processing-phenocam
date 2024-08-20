@@ -80,16 +80,17 @@ def side_menu_options(stations_names_list:list, is_platform_table: True) -> Tupl
             table_name = f"{station.platforms[platforms_type][platform_id]['platform_type']}_{station.platforms[platforms_type][platform_id]['location_id']}_{platform_id}"
             
         records_count = station.get_record_count(table_name=table_name)
+        
         session_state('table_name', table_name)
         session_state('records_count', records_count)
         
-        tc1, tc2 = st.sidebar.columns([3,1])
+        st.sidebar.text_input('Table Name', value=table_name, disabled=False)
+        
+        tc1, tc2, tc3 = st.sidebar.columns(3)
         
         with tc1:
-            st.text_input('Table Name', value=table_name)
-        with tc2:
             st.metric('Number of Records', value=records_count)
-        
+       
         years = sorted(station.get_unique_years(table_name=table_name), reverse=True)
         d1c, d2c = st.sidebar.columns(2)
         
@@ -103,6 +104,23 @@ def side_menu_options(stations_names_list:list, is_platform_table: True) -> Tupl
             sorted(years, reverse=True)
             year = st.selectbox('Year', options=years, index=idx_year)
             session_state('year', year)
+        
+        with tc2:
+            count_L1_records = station.count_records_by_year_with_filters(
+                table_name=table_name,
+                year=year,
+                filters={'is_L1':True} 
+                 )
+            st.metric('L1 records', value=count_L1_records)
+            
+        with tc3:
+            count_record_is_ready = station.count_records_by_year_with_filters(
+                table_name=table_name,
+                year=year,
+                filters={'is_ready_for_products_use':True} 
+                 )
+            st.metric('records ready', value=count_record_is_ready)
+            
         
         _doys = station.get_day_of_year_min_max(table_name=table_name, year=year)
         min_doy = _doys['min']
