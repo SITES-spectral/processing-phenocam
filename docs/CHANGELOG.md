@@ -1,5 +1,9 @@
+## [v0.1.7]
+- stable  
+
 ## [v0.1.6]
-- WIP 
+- Multiple fixes
+- flags per roi - WIP 
 
 ## [v0.1.5]
 - stable and functional. 

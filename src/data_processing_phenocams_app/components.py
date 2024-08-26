@@ -5,7 +5,7 @@ from typing import Tuple
 from sstc_core.sites.spectral.stations import Station
 from sstc_core.sites.spectral.config import catalog_filepaths
 from sstc_core.sites.spectral.utils import day_of_year_to_month_day, extract_keys_with_prefix, have_values_changed
-from data_processing_phenocams_app.utils import session_state, update_flags
+from data_processing_phenocams_app.utils import session_state, update_flags, build_flags_dataframe, dataframe_to_flags_dict
 
 
 
@@ -182,24 +182,33 @@ def quality_flags_management(station: Station, table_name: str, catalog_guid: st
         catalog_guid (str): The catalog GUID.
         record (dict): The record to manage flags for.
     """
-    flags_dict = extract_keys_with_prefix(input_dict=record, starts_with='flag_')
-    df = pd.DataFrame(list(flags_dict.items()), columns=['Flag', 'Status'])
-    df['Status'] = df['Status'].apply(lambda x: True if x else False if x is not None else False)
-    edited_df = st.data_editor(df, hide_index=True, num_rows='fixed', use_container_width=True)
+    flags_dict = extract_keys_with_prefix(input_dict=record, starts_with='ROI_')
+    
+    df = build_flags_dataframe(flags_dict=flags_dict)
+    #df = pd.DataFrame(list(flags_dict.items()), columns=['Flag', 'Status'])
+    #df['Status'] = df['Status'].apply(lambda x: True if x else False if x is not None else False)
+    edited_df = st.data_editor(df, num_rows='fixed', use_container_width=True)
 
     session_state('flags_confirmed', record['flags_confirmed'])
     
+    updated_flags=  dataframe_to_flags_dict(pd.DataFrame(edited_df), original_dict=flags_dict)
+    
     if st.button('Confirm'):
-        updated_flags_dict = dict(zip(edited_df['Flag'], edited_df['Status']))
-        updated_flags = have_values_changed(flags_dict, updated_flags_dict)
-        updated_flags['flags_confirmed'] = True
+        #updated_flags_dict = dict(zip(edited_df['Flag'], edited_df['Status']))
+        #updated_flags = have_values_changed(flags_dict, updated_flags_dict)
+                    
+        updated_flags['flags_confirmed'] = True    
 
         session_state('flags_confirmed', updated_flags['flags_confirmed'])
     
-        if updated_flags:
-            has_updated = update_flags(station, table_name, catalog_guid, updated_flags)
-            if has_updated:
-                st.toast('Flags values updated and saved')
-                session_state('flags_dict', updated_flags_dict)                
+        if len(updated_flags) >= 1:
+            flags_confirmed = station.update_record_by_catalog_guid(table_name=table_name, catalog_guid=catalog_guid, updates=updated_flags)
+            #has_updated = update_flags(station, table_name, catalog_guid, updated_flags)
+            if flags_confirmed:
+                st.toast('Flags values confirmed and saved')
+                session_state('flags_dict', updated_flags)                
             else:
                 st.warning('Flags not updated')
+                
+    st.write(updated_flags)
+

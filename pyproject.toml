@@ -6,7 +6,7 @@
 
 [tool.poetry]
 name = "data-processing-phenocams-app"
-version = "0.1.6"
+version = "0.1.7"
 description = "A Streamlit application for processing PhenoCam data"
 authors = ["Jobelund <124563223+jobelund@users.noreply.github.com>"]
 readme = "README.md"
