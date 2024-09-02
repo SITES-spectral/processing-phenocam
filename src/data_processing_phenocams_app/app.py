@@ -3,12 +3,11 @@ import cv2
 from sstc_core.sites.spectral import utils
 from data_processing_phenocams_app.utils import session_state, get_records_by_year_and_day_of_year, update_flags
 from data_processing_phenocams_app.components import side_menu_options, show_title, show_record, quality_flags_management
-from sstc_core.sites.spectral import image_quality
 from sstc_core.sites.spectral.stations import get_stations_names_dict, get_station_platform_geolocation_point
 from sstc_core.sites.spectral.data_products.qflags import compute_qflag
 from sstc_core.sites.spectral.data_products import phenocams
 import matplotlib.pyplot as plt
-
+from datetime import datetime
 
 st.set_page_config(layout="wide")
 
@@ -70,12 +69,16 @@ def run():
     Main function to run the Streamlit app.
     """
     stations_dict = get_stations_names_dict()
+    
     stations_names_list = sorted(list(stations_dict.keys()))
     
     station, table_name, platforms_type, platform_id,  year, _doy = side_menu_options( stations_names_list=stations_names_list, is_platform_table = True)
     if not all([station, table_name, year, _doy]):
         st.error("Please select all required options.")
         return
+    
+    station_name = st.session_state.get('station_name')
+    station_acronym = stations_dict[station_name]['station_acronym'] 
     
     phenocam_rois = station.phenocam_rois(
         platforms_type=platforms_type,
@@ -216,13 +219,22 @@ def run():
 
             #######        
             # QFLAG
+            records_list = [ record for i, record in records.items()]
+            r_list = [{'creation_date': record['creation_date']} for record in records_list]
+            meantime_resolution = utils.calculate_mean_time_resolution(records_list=r_list)
+            if len(r_list) > 1 and (meantime_resolution.get('hours',0) > 0 or meantime_resolution.get('minutes', 30)) > 30:
+                default_temporal_resolution = False
+            else:
+                default_temporal_resolution = True
+                 
             
-            
-            QFLAG_image = compute_qflag(
+            qflag_dict = compute_qflag(
                 latitude_dd=latitude_dd,
                 longitude_dd=longitude_dd,
                 records_dict={catalog_guid:record},
-                timezone_str= 'Europe/Stockholm'
+                timezone_str= 'Europe/Stockholm',
+                default_temporal_resolution=default_temporal_resolution,
+                is_per_image=True,
                 )
             
             updates = {} 
@@ -230,8 +242,10 @@ def run():
             updates['sun_elevation_angle'] = record['sun_elevation_angle'] = sun_elevation_angle
             updates['sun_azimuth_angle'] = record['sun_azimuth_angle'] = sun_azimuth_angle
             updates['solar_elevation_class'] = record['solar_elevation_class']  = solar_elevation_class
-            updates["QFLAG_image_value"] = record["QFLAG_image_value"] = QFLAG_image['QFLAG']
-            updates["QFLAG_image_weight"] = record["QFLAG_image_weight"] = QFLAG_image['weight']
+            updates["QFLAG_image_value"] = record["QFLAG_image_value"] = qflag_dict['QFLAG']
+            updates["QFLAG_image_weight"] = record["QFLAG_image_weight"] = qflag_dict['weight']
+            updates['default_temporal_resolution'] = record['default_temporal_resolution'] = qflag_dict['default_temporal_resolution']
+            updates['meantime_resolution'] = record['meantime_resolution'] = f"{meantime_resolution['hours']}:{meantime_resolution['minutes']}:00"  
                     
             st.markdown(f'**sun azimuth angle**: {sun_azimuth_angle:.2f}') 
             sol1, sol2 = st.columns(2)
@@ -243,10 +257,12 @@ def run():
             
             m1, m2 = st.columns(2)
             with m1:
-                st.metric(label='QFLAG image value', value=QFLAG_image['QFLAG'])
-            with m2:
+                st.write(label='Time Resolution', value= meantime_resolution)
+            # TODO: show the has flags isntead
+            # swith m2:
+            #    pass
                     
-                st.metric(label='QFLAG image weight', value=QFLAG_image['weight'])
+                #st.metric(label='QFLAG image weight', value=QFLAG_image['weight'])
             
             
             with st.container(border=True):
@@ -295,30 +311,43 @@ def run():
         #with r2:
        
             
-        apply_weights = st.toggle(label='Apply weights', value=True)
+        apply_weights = st.toggle(label='Apply penalties for weighting', value=True)
         
-        flags_weights_dict = get_phenocams_flags_dict()
+        iflags_penalties_dict = get_phenocams_flags_dict()
         
         if not apply_weights:
-            flags_weights_dict = {k:{'value': v['value'], 'weight': 0 }  for k, v in flags_weights_dict.items()}            
+            iflags_penalties_dict = {k:{'value': v['value'], 'penality_value': 0 }  for k, v in iflags_penalties_dict.items()}            
         
         
         records_dict = station.get_records_ready_for_products_by_year(
             table_name=table_name, 
             year=year,                    
             )
+        
+        
+        minmax_dates_dict =  station.get_min_max_dates_with_filters(
+            year=year,
+            table_name=table_name            
+            )
+        
+        session_state('minmax_dates_dict', minmax_dates_dict)
                                                 
         l2_results_dict = phenocams.calculate_roi_weighted_means_and_stds_per_record(
             records_dict=records_dict,                        
-            flags_and_weights=flags_weights_dict,
+            iflags_penalties_dict=iflags_penalties_dict,
             rois_list=rois_list,
+            overwrite_weight=False,
 
         )
+        
                             
         l3_results_dict = phenocams.calculate_roi_weighted_means_and_stds(
             records_dict=records_dict,                        
-            flags_and_weights=flags_weights_dict,
-            rois_list=rois_list
+            iflags_penalties_dict=iflags_penalties_dict,
+            rois_list=rois_list,
+            latitude_dd=latitude_dd,
+            longitude_dd=longitude_dd,
+            overwrite_weight=False,
             )
         session_state('l3_results_dict', l3_results_dict)
         
@@ -333,6 +362,7 @@ def run():
                 index=index_plot
                 )
             
+            session_state('l3_df', l3_df)
             session_state('selected_l3_field_to_plot', selected_l3_field_to_plot)
             
             selected_df = l3_df[selected_l3_field_to_plot]
@@ -342,18 +372,29 @@ def run():
             ax.scatter(selected_df.index, selected_df, label='Value', color='blue', s=10)  # s controls the size of the points
             ax.set_xlabel('Day of Year')
             ax.set_ylabel('Value')
-            ax.set_title('Data by Day of Year')
+            ax.set_title(selected_l3_field_to_plot) # 'Data by Day of Year')
             ax.grid(True)
-            ax.legend()
+            #ax.legend()
 
             # Display the plot in Streamlit
             st.pyplot(fig)
             #st.pyplot(selected_df)
-    if st.session_state.get('l3_df'):
-          
-        with tab3:
-            st.write(l3_df)
+    
+
         
+    with tab3:
+        l3_df = st.session_state.get('l3_df', None)
+         
+        if l3_df is not None:
+            station_name = st.session_state.get(station_name)
+            minmax_dates_dict = st.session_state.get('minmax_dates_dict',{})
+            mindate = minmax_dates_dict['min'].replace(':', '').replace('-','').split(' ')[0] 
+            maxdate = minmax_dates_dict['max'].replace(':', '').replace('-','').split(' ')[0] 
+                       
+        
+            st.subheader(f'SITES-L3_ROI_TS-{station_acronym}-{platform_id}-{mindate}-{maxdate}')
+            st.write(l3_df)
+    
     
 if __name__ == '__main__':
 

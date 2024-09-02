@@ -31,6 +31,8 @@ def side_menu_options(stations_names_list:list, is_platform_table: True) -> Tupl
             options=stations_names_list,
             index=idx_station 
             )
+        #station_acronym = stations_names_list[station_name]['station_acronym'] 
+        #session_state['station_acronym', station_acronym] 
         
         db_filepath = catalog_filepaths.get(station_name, None)
         

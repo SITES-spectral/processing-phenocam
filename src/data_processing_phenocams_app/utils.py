@@ -53,7 +53,7 @@ def build_flags_dataframe(flags_dict:dict)->pd.DataFrame:
     Parameters
     ----------
     flags_dict : dict
-        A dictionary where keys are in the format 'ROI_XX_flag_name' and values are the corresponding flag values.
+        A dictionary where keys are in the format 'ROI_XX_iflag_name' and values are the corresponding flag values.
     
     Returns
     -------
@@ -63,10 +63,10 @@ def build_flags_dataframe(flags_dict:dict)->pd.DataFrame:
     Examples
     --------
     >>> flags_dict = {
-    ...     'ROI_01_flag_disable_for_processing': False,
-    ...     'ROI_02_flag_disable_for_processing': True,
-    ...     'ROI_01_flag_shadows': False,
-    ...     'ROI_02_flag_shadows': True,
+    ...     'ROI_01_iflag_disable_for_processing': False,
+    ...     'ROI_02_iflag_disable_for_processing': True,
+    ...     'ROI_01_iflag_shadows': False,
+    ...     'ROI_02_iflag_shadows': True,
     ... }
     >>> df = build_flags_dataframe(flags_dict)
     >>> print(df)
@@ -79,7 +79,7 @@ def build_flags_dataframe(flags_dict:dict)->pd.DataFrame:
     
     for key, value in flags_dict.items():
         # Split the key into ROI identifier and flag name
-        roi, flag_name = key.split('_flag_', 1)
+        roi, flag_name = key.split('_iflag_', 1)
         
         # If the flag_name is not yet in the structured_data dictionary, initialize it
         if flag_name not in structured_data:
@@ -111,15 +111,15 @@ def dataframe_to_flags_dict(df, original_dict):
     Returns
     -------
     dict
-        A dictionary containing only the flags that have been edited, with keys in the format 'ROI_XX_flag_name'.
+        A dictionary containing only the flags that have been edited, with keys in the format 'ROI_XX_iflag_name'.
     
     Examples
     --------
     >>> original_dict = {
-    ...     'ROI_01_flag_disable_for_processing': False,
-    ...     'ROI_02_flag_disable_for_processing': True,
-    ...     'ROI_01_flag_shadows': False,
-    ...     'ROI_02_flag_shadows': True,
+    ...     'ROI_01_iflag_disable_for_processing': False,
+    ...     'ROI_02_iflag_disable_for_processing': True,
+    ...     'ROI_01_iflag_shadows': False,
+    ...     'ROI_02_iflag_shadows': True,
     ... }
     >>> edited_df = pd.DataFrame({
     ...     'ROI_01': [True, False],
@@ -127,7 +127,7 @@ def dataframe_to_flags_dict(df, original_dict):
     ... }, index=['flag_disable_for_processing', 'flag_shadows'])
     >>> new_flags_dict = dataframe_to_flags_dict(edited_df, original_dict)
     >>> print(new_flags_dict)
-    {'ROI_01_flag_disable_for_processing': True}
+    {'ROI_01_iflag_disable_for_processing': True}
     """
     
     edited_flags = {}
@@ -135,7 +135,7 @@ def dataframe_to_flags_dict(df, original_dict):
     # Iterate over the DataFrame to compare each value with the original dictionary
     for flag_name in df.index:
         for roi in df.columns:
-            dict_key = f"{roi}_flag_{flag_name}"
+            dict_key = f"{roi}_iflag_{flag_name}"
             
             # Compare the DataFrame value with the original dictionary value
             if dict_key in original_dict and bool(df.at[flag_name, roi]) != bool(original_dict[dict_key]):
