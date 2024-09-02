@@ -1,3 +1,6 @@
+## [v0.1.8]
+- updated to python=3.12 
+
 ## [v0.1.7]
 - stable  
 

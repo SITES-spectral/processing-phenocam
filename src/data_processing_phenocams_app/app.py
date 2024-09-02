@@ -257,7 +257,7 @@ def run():
             
             m1, m2 = st.columns(2)
             with m1:
-                st.write(label='Time Resolution', value= meantime_resolution)
+                st.write(f'**TIME RESOLUTION [HH:MM]**: {str(meantime_resolution["hours"]).zfill(2)}:{str(meantime_resolution["hours"]).zfill(2)}')
             # TODO: show the has flags isntead
             # swith m2:
             #    pass

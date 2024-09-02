@@ -6,7 +6,7 @@
 
 [tool.poetry]
 name = "data-processing-phenocams-app"
-version = "0.1.7"
+version = "0.1.8"
 description = "A Streamlit application for processing PhenoCam data"
 authors = ["Jobelund <124563223+jobelund@users.noreply.github.com>"]
 readme = "README.md"
@@ -14,9 +14,9 @@ packages = [{include = "data_processing_phenocams_app", from = "src"}]
 homepage = "https://pypi.org/project/sstc-core/"
 
 [tool.poetry.dependencies]
-python = "^3.11"
+python = "^3.12"
 mkdocs = "^1.5.3"
-streamlit = "^1.37.1"
+streamlit = "^1.38.0"
 Pillow = "^10.4.0"
 pandas = "^2.2.2"
 mkdocs-material = "^9.5.31"
