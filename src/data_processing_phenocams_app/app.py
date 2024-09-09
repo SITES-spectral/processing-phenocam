@@ -87,7 +87,7 @@ def run():
     
     rois_list = sorted(list(phenocam_rois.keys()))
     
-    tab1, tab2, tab3 = st.tabs([ 'Phenocam data-prep', 'time series plots', 'Time Series table'] )
+    tab1, tab3 = st.tabs([ 'Phenocam data-prep',  'Time Series table'] )   #'time series plots'
     ##
     with tab1:
             
@@ -168,6 +168,8 @@ def run():
         
         with st.sidebar.expander(label='L2 dataprep', expanded=False):
             st.write(l2_data_prep)
+ 
+            
         #################
         
         c1, c2 = st.columns([3, 1])
@@ -226,7 +228,9 @@ def run():
                 default_temporal_resolution = False
             else:
                 default_temporal_resolution = True
-                 
+            
+            session_state('meantime_resolution', meantime_resolution)
+            session_state('default_temporal_resolution', default_temporal_resolution)     
             
             qflag_dict = compute_qflag(
                 latitude_dd=latitude_dd,
@@ -245,7 +249,7 @@ def run():
             updates["QFLAG_image_value"] = record["QFLAG_image_value"] = qflag_dict['QFLAG']
             updates["QFLAG_image_weight"] = record["QFLAG_image_weight"] = qflag_dict['weight']
             updates['default_temporal_resolution'] = record['default_temporal_resolution'] = qflag_dict['default_temporal_resolution']
-            updates['meantime_resolution'] = record['meantime_resolution'] = f"{meantime_resolution['hours']}:{meantime_resolution['minutes']}:00"  
+            updates['meantime_resolution'] = record['meantime_resolution'] = f"{str( meantime_resolution['hours']).zfill(2)}:{str(meantime_resolution['minutes']).zfill(2)}:00"  
                     
             st.markdown(f'**sun azimuth angle**: {sun_azimuth_angle:.2f}') 
             sol1, sol2 = st.columns(2)
@@ -269,7 +273,7 @@ def run():
                     
                 z1, z2 = st.columns(2)
                 with z1:
-                    st.checkbox(label='flags confirmed', value= record['flags_confirmed'], disabled=True )
+                    st.checkbox(label='iflags confirmed', value= record['iflags_confirmed'], disabled=True )
                 with z2:
                     if st.button('Confirm Flags'):
                         quality_flags_management(station, table_name, catalog_guid, record)
@@ -300,19 +304,39 @@ def run():
                         catalog_guid=catalog_guid, 
                         updates=update_rois)
                     st.toast(f'updates saved: {is_saved}')
-    
-    with tab2:
-                
-        #r1, r2 = st.columns(2)
-        #with r1:
-        #    with st.expander(label='L2 Results'):
-        #        l2_df = phenocams.create_l2_parameters_dataframe(data_dict=l2_results_dict, year=year)
-        #        st.dataframe(l2_df)
-        #with r2:
-       
+        #with st.expander(label='session state'):
+        #    st.write(st.session_state)
             
-        apply_weights = st.toggle(label='Apply penalties for weighting', value=True)
+    #with tab2:
+                
+    #r1, r2 = st.columns(2)
+    #with r1:
+    #    with st.expander(label='L2 Results'):
+    #        l2_df = phenocams.create_l2_parameters_dataframe(data_dict=l2_results_dict, year=year)
+    #        st.dataframe(l2_df)
+    #with r2:
+    
         
+        # Plot the data
+        
+        #fig, ax = plt.subplots()
+        #ax.plot(selected_df.index, selected_df, label=selected_l3_field_to_plot)
+        #ax.scatter(selected_df.index, selected_df, label='Value', color='blue', s=10)  # s controls the size of the points
+        #ax.set_xlabel('Day of Year')
+        #ax.set_ylabel('Value')
+        #ax.set_title(selected_l3_field_to_plot) # 'Data by Day of Year')
+        #ax.grid(True)
+        #ax.legend()
+
+        # Display the plot in Streamlit
+        #st.pyplot(fig)
+        #st.pyplot(selected_df)
+
+
+        
+    with tab3:
+        apply_weights = st.toggle(label='Apply penalties for weighting', value=True)
+    
         iflags_penalties_dict = get_phenocams_flags_dict()
         
         if not apply_weights:
@@ -340,6 +364,8 @@ def run():
 
         )
         
+        session_state('l2_results_dict', l2_results_dict)
+        
                             
         l3_results_dict = phenocams.calculate_roi_weighted_means_and_stds(
             records_dict=records_dict,                        
@@ -353,36 +379,23 @@ def run():
         
         if st.session_state.get('l3_results_dict', False):
             
+            
             l3_df = phenocams.create_l3_parameters_dataframe(data_dict=l3_results_dict, year=year)
             options_plot = list(l3_df.columns)
             index_plot = options_plot.index(st.session_state.get('selected_l3_field_to_plot', options_plot[0] ))
-            selected_l3_field_to_plot = st.selectbox(
-                label='Select parameter to plot', 
-                options=options_plot,
-                index=index_plot
-                )
+            #selected_l3_field_to_plot = st.selectbox(
+            #    label='Select parameter to plot', 
+            #    options=options_plot,
+            #    index=index_plot
+            #    )
             
             session_state('l3_df', l3_df)
-            session_state('selected_l3_field_to_plot', selected_l3_field_to_plot)
+            #session_state('selected_l3_field_to_plot', selected_l3_field_to_plot)
             
-            selected_df = l3_df[selected_l3_field_to_plot]
-            # Plot the data
-            fig, ax = plt.subplots()
-            ax.plot(selected_df.index, selected_df, label=selected_l3_field_to_plot)
-            ax.scatter(selected_df.index, selected_df, label='Value', color='blue', s=10)  # s controls the size of the points
-            ax.set_xlabel('Day of Year')
-            ax.set_ylabel('Value')
-            ax.set_title(selected_l3_field_to_plot) # 'Data by Day of Year')
-            ax.grid(True)
-            #ax.legend()
-
-            # Display the plot in Streamlit
-            st.pyplot(fig)
-            #st.pyplot(selected_df)
-    
+            #selected_df = l3_df[selected_l3_field_to_plot]
 
         
-    with tab3:
+        
         l3_df = st.session_state.get('l3_df', None)
          
         if l3_df is not None:
