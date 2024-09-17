@@ -191,7 +191,7 @@ def quality_flags_management(station: Station, table_name: str, catalog_guid: st
     #df['Status'] = df['Status'].apply(lambda x: True if x else False if x is not None else False)
     edited_df = st.data_editor(df, num_rows='fixed', use_container_width=True)
 
-    session_state('flags_confirmed', record['flags_confirmed'])
+    session_state('iflags_confirmed', record['iflags_confirmed'])
     
     updated_flags=  dataframe_to_flags_dict(pd.DataFrame(edited_df), original_dict=flags_dict)
     
@@ -199,16 +199,16 @@ def quality_flags_management(station: Station, table_name: str, catalog_guid: st
         #updated_flags_dict = dict(zip(edited_df['Flag'], edited_df['Status']))
         #updated_flags = have_values_changed(flags_dict, updated_flags_dict)
                     
-        updated_flags['flags_confirmed'] = True    
+        updated_flags['iflags_confirmed'] = True    
 
-        session_state('flags_confirmed', updated_flags['flags_confirmed'])
+        session_state('iflags_confirmed', updated_flags['iflags_confirmed'])
     
         if len(updated_flags) >= 1:
-            flags_confirmed = station.update_record_by_catalog_guid(table_name=table_name, catalog_guid=catalog_guid, updates=updated_flags)
+            iflags_confirmed = station.update_record_by_catalog_guid(table_name=table_name, catalog_guid=catalog_guid, updates=updated_flags)
             #has_updated = update_flags(station, table_name, catalog_guid, updated_flags)
-            if flags_confirmed:
+            if iflags_confirmed:
                 st.toast('Flags values confirmed and saved')
-                session_state('flags_dict', updated_flags)                
+                session_state('iflags_dict', updated_flags)                
             else:
                 st.warning('Flags not updated')
                 
