@@ -69,8 +69,7 @@ def detect_snow_in_image(image_path: str, snow_detection_function, **kwargs) -> 
     
 def plot_time_series_streamlit(
     df: pd.DataFrame, 
-    title:str,
-    rois_list: list = None, 
+    title:str,    
     plot_options: dict = None, 
     width: int = 600, 
     height: int = 400, 
@@ -78,9 +77,12 @@ def plot_time_series_streamlit(
     substrings: list = None,
     exclude_columns: list = ['QFLAG_value', 'QFLAG_default_temporal_resolution', 'QFLAG_is_per_image'],
     group_by: str = None,
-    facet: bool = False 
-    
+    facet: bool = False,
+    rois_list: list = None,
+    show_legend: bool = True,
+    legend_position: str = 'right', 
     ):
+    
     """
     Streamlit app to plot a time series from a pandas DataFrame.
 
@@ -115,7 +117,10 @@ def plot_time_series_streamlit(
             substrings = substrings,
             exclude_columns = exclude_columns,
             group_by = group_by,
-            facet = facet,            
+            facet = facet,
+            rois_list = rois_list,
+            show_legend = show_legend,
+            legend_position = legend_position,
             )
         
         # Display the Altair chart using Streamlit
@@ -286,7 +291,7 @@ def run():
             records_list = [ record for i, record in records.items()]
             r_list = [{'creation_date': record['creation_date']} for record in records_list]
             meantime_resolution = utils.calculate_mean_time_resolution(records_list=r_list)
-            if len(r_list) > 1 and (meantime_resolution.get('hours',0) > 0 or meantime_resolution.get('minutes', 30)) > 30:
+            if len(r_list) > 1 and (meantime_resolution.get('hours',0) > 0 or meantime_resolution.get('minutes', 30) > 30):
                 default_temporal_resolution = False
             else:
                 default_temporal_resolution = True
@@ -556,61 +561,75 @@ def run():
                         #
                         roi_ts_dict[doy][column_name] = None
                         #    
-
+        
         # Create a DataFrame from the dictionary
         df = pd.DataFrame.from_dict(roi_ts_dict, orient='index')
         # Sort the DataFrame by the index (days of the year)
-        df.sort_index(inplace=True)
-        df['year'] = str(year)
-        df['day_of_year'] = df.index
-        xcols = [
-            'year',
-            'day_of_year',
-            'QFLAG_value',
-            'QFLAG_default_temporal_resolution',
-            'QFLAG_is_per_image']
-        columns = [c for c in df.columns if c not in xcols]
-        ordered_columns = xcols + columns
-
-
-        # Fill missing values with pd.NA (a proper placeholder for missing data)
-        df = df[ordered_columns].reindex(range(1, days_in_year + 1)).fillna(pd.NA)
-        df['year'] = str(year)
-        df['day_of_year'] = df.index
-        # Replace numpy.NA with None
-        df = df.replace({pd.NA: None})
-        
-        # -------------------
-        mindate = minmax_dates_dict['min'].replace(':', '').replace('-','').split(' ')[0] 
-        maxdate = minmax_dates_dict['max'].replace(':', '').replace('-','').split(' ')[0] 
-        backup_dirpath = 'aurora02_dirpath'
-        local_dirpath = station.platforms[platforms_type][platform_id]['backups'][backup_dirpath]
-        products_dirpath = os.path.join(local_dirpath, "products")
-        l3_dirpath = Path(products_dirpath) / 'L3_ROI_TS' / str(year)
-        os.makedirs(l3_dirpath, exist_ok=True)
-        l3_filename = f'SITES_ROI-TS_{station_acronym.replace('_', '-')}_{platform_id.replace('_', '-')}_{mindate}-{maxdate}_L3_DAILY.csv'
-        l3_filepath = l3_dirpath / l3_filename
-        
-        # TODO: add a button to save 
-         
-        
-        st.subheader(l3_filename)
-
-        if st.toggle(label='show level 3 results'):
-            with st.expander(label=f'{year} level 3 results'):
-                with st.spinner(text='preparing time series'):
-                    st.dataframe(df)
-            filtered_df = select_dataframe_columns_by_strings(
-                
-                df=df, 
-                substrings =['weighted', 'year'],
-                exclude_columns =['QFLAG_value', 'QFLAG_default_temporal_resolution', 'QFLAG_is_per_image'])
+        if len(df)>0:
             
-            plot_time_series_streamlit(
-                df=filtered_df, 
-                title=str(year),                
-                interactive=True,
-                )
+            df.sort_index(inplace=True)
+            df['year'] = str(year)
+            df['day_of_year'] = df.index
+            xcols = [
+                'year',
+                'day_of_year',
+                'QFLAG_value',
+                'QFLAG_default_temporal_resolution',
+                'QFLAG_is_per_image']
+            columns = [c for c in df.columns if c not in xcols]
+            ordered_columns = xcols + columns
+
+
+            # Fill missing values with pd.NA (a proper placeholder for missing data)
+            df = df[ordered_columns].reindex(range(1, days_in_year + 1)).fillna(pd.NA)
+            df['year'] = str(year)
+            df['day_of_year'] = df.index
+            # Replace numpy.NA with None
+            df = df.replace({pd.NA: None})
+            
+            # -------------------
+            mindate = minmax_dates_dict['min'].replace(':', '').replace('-','').split(' ')[0] 
+            maxdate = minmax_dates_dict['max'].replace(':', '').replace('-','').split(' ')[0] 
+            backup_dirpath = 'aurora02_dirpath'
+            local_dirpath = station.platforms[platforms_type][platform_id]['backups'][backup_dirpath]
+            products_dirpath = os.path.join(local_dirpath, "products")
+            l3_dirpath = Path(products_dirpath) / 'L3_ROI_TS' / str(year)
+            os.makedirs(l3_dirpath, exist_ok=True)
+            l3_filename = f'SITES_ROI-TS_{station_acronym.replace('_', '-')}_{platform_id.replace('_', '-')}_{mindate}-{maxdate}_L3_DAILY.csv'
+            l3_filepath = l3_dirpath / l3_filename
+            
+            # TODO: add a button to save 
+            
+            
+            st.subheader(l3_filename)
+
+            if st.toggle(label='show level 3 results', value=True):
+                with st.expander(label=f'{year} level 3 results'):
+                    with st.spinner(text='preparing time series'):
+                        st.dataframe(df)
+                filtered_df = select_dataframe_columns_by_strings(
+                    
+                    df=df, 
+                    substrings =['mean_red', 'mean_blue', 'mean_green', 'year'],
+                    exclude_columns =['QFLAG_value', 'QFLAG_default_temporal_resolution', 'QFLAG_is_per_image'])
+                
+                plot_options = plots.assign_hue_colors_to_columns(
+                    rois_list=rois_list, 
+                    columns_list = filtered_df.columns.to_list(),                
+                    )
+                
+                plot_options ={key:{'color': f'{value}'} for key, value in plot_options.items()}  
+                
+                plot_time_series_streamlit(
+                    df=filtered_df, 
+                    title=str(year),                
+                    interactive=True,               
+                    #plot_options=plot_options,
+                    show_legend=True,
+                    #facet=True, 
+                    #group_by='year',
+                    rois_list=rois_list,
+                    )
         
     
 if __name__ == '__main__':
