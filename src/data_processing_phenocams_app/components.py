@@ -4,8 +4,8 @@ import pandas as pd
 from typing import Tuple
 from sstc_core.sites.spectral.stations import Station
 from sstc_core.sites.spectral.config import catalog_filepaths
-from sstc_core.sites.spectral.utils import day_of_year_to_month_day, extract_keys_with_prefix, have_values_changed
-from data_processing_phenocams_app.utils import session_state, update_flags, build_flags_dataframe, dataframe_to_flags_dict
+from sstc_core.sites.spectral.utils import day_of_year_to_month_day, extract_keys_with_prefix
+from data_processing_phenocams_app.utils import session_state, build_flags_dataframe, dataframe_to_flags_dict
 
 
 
@@ -42,13 +42,16 @@ def side_menu_options(stations_names_list:list, is_platform_table: True) -> Tupl
         
         station = Station(db_dirpath=os.path.dirname(db_filepath), station_name=station_name)
         session_state('station_name', station_name)
+        if station_name not in st.session_state:
+            st.session_state[station_name] ={}  
+        
     
     with sc2:
         if station:
             platforms_types_dict = station.platforms
             platforms_types = sorted(list(platforms_types_dict.keys()))
             try:
-                idx_platforms_type = platforms_types.index(st.session_state.get('platforms_type', 0))
+                idx_platforms_type = platforms_types.index(st.session_state[station_name].get('platforms_type', 0))
             except:
                 idx_platforms_type = 0
                  
@@ -57,13 +60,14 @@ def side_menu_options(stations_names_list:list, is_platform_table: True) -> Tupl
                 options=platforms_types,
                 index=idx_platforms_type
                 )
-            session_state('platforms_type', platforms_type)
+            #session_state('platforms_type', platforms_type)
+            st.session_state[station_name]['platforms_type']  = platforms_type
     
     if platforms_type:
         
         platform_ids = sorted(list(platforms_types_dict[platforms_type].keys()))
         try:
-            idx_platform_id = platform_ids.index(st.session_state.get('platform_id', 0))
+            idx_platform_id = platform_ids.index(st.session_state[station_name].get('platform_id', 0))
         except:
             idx_platform_id = 0
              
@@ -73,7 +77,8 @@ def side_menu_options(stations_names_list:list, is_platform_table: True) -> Tupl
             options=platform_ids, 
             index=idx_platform_id)
         
-        session_state('platform_id', platform_id)
+        #session_state('platform_id', platform_id)
+        st.session_state[station_name]['platform_id'] = platform_id 
         
         if is_platform_table:
             table_name = f"{station.platforms[platforms_type][platform_id]['platform_type']}_{station.platforms[platforms_type][platform_id]['location_id']}_{platform_id}"
@@ -97,7 +102,7 @@ def side_menu_options(stations_names_list:list, is_platform_table: True) -> Tupl
         d1c, d2c = st.sidebar.columns(2)
         
         try:
-            idx_year = years.index(st.session_state.get('year', 0))
+            idx_year = years.index(st.session_state[station_name].get('year', 0))
         except:
             idx_year= 0
         
@@ -105,7 +110,8 @@ def side_menu_options(stations_names_list:list, is_platform_table: True) -> Tupl
             
             sorted(years, reverse=True)
             year = st.selectbox('Year', options=years, index=idx_year)
-            session_state('year', year)
+            #session_state('year', year)
+            st.session_state[station_name]['year'] = year 
         
         with tc2:
             count_L1_records = station.count_records_by_year_with_filters(
@@ -127,11 +133,12 @@ def side_menu_options(stations_names_list:list, is_platform_table: True) -> Tupl
         _doys = station.get_day_of_year_min_max(table_name=table_name, year=year)
         min_doy = _doys['min']
         max_doy = _doys['max']
+        doys = _doys['doys'] 
         
-        doys = sorted(list(range(min_doy, max_doy+1, 1 )))
+        
         with d2c:
             try:
-                value = doys.index(st.session_state.get('doy', min_doy))
+                value = doys.index(st.session_state[station_name].get('doy', min_doy))
                 if value < min_doy:
                     value = min_doy
             except:
@@ -146,8 +153,9 @@ def side_menu_options(stations_names_list:list, is_platform_table: True) -> Tupl
                  
                 )
             
-            session_state('doy', _doy)
-        
+            #session_state('doy', _doy)
+            st.session_state[station_name]['doy'] = _doy  
+        #TODO: ensure doy has images
         return station, table_name, platforms_type, platform_id,  year, _doy
 
     return None, None, None, None, None, None
