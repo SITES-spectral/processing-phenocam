@@ -192,7 +192,7 @@ def run():
             'Available Images', 
             options=images_name_and_guid.keys())
         catalog_guid = images_name_and_guid[image_name]
-        session_state('catalog_guid', catalog_guid)
+        #session_state('catalog_guid', catalog_guid)
         record = records[catalog_guid]
             
         with p3:
@@ -203,7 +203,7 @@ def run():
         
 
         
-        session_state('flags_dict', rois_flags_dict)
+        #session_state('flags_dict', rois_flags_dict)
         
         p1.write(f'**Image Name:** {image_name}')
         
@@ -264,7 +264,7 @@ def run():
                     label='has snow presence', 
                     value= record.get('has_snow_presence', False))
                 
-                session_state('has_snow_presence', has_snow_presence)
+                #session_state('has_snow_presence', has_snow_presence)
                 
             
                 if has_snow_presence:
@@ -296,8 +296,8 @@ def run():
             else:
                 default_temporal_resolution = True
             
-            session_state('meantime_resolution', meantime_resolution)
-            session_state('default_temporal_resolution', default_temporal_resolution)     
+            #session_state('meantime_resolution', meantime_resolution)
+            #session_state('default_temporal_resolution', default_temporal_resolution)     
             
             qflag_dict = compute_qflag(
                 latitude_dd=latitude_dd,
@@ -352,7 +352,7 @@ def run():
                 w1, w2 = st.columns(2)
                 with w1:                
                     is_ready_for_products_use = st.checkbox('Ready for L2 & L3', value=record['is_ready_for_products_use'])
-                    session_state('is_ready_for_products_use', is_ready_for_products_use)
+                    #session_state('is_ready_for_products_use', is_ready_for_products_use)
                         
                         
                         
@@ -395,7 +395,7 @@ def run():
             table_name=table_name            
             )
         
-        session_state('minmax_dates_dict', minmax_dates_dict)
+        #session_state('minmax_dates_dict', minmax_dates_dict)
         
         #########################
         filtered_records = station.get_filtered_records(table_name=table_name, filters={"is_ready_for_products_use": True, "year":year})

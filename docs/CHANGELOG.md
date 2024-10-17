@@ -1,3 +1,12 @@
+## [v0.2.0]
+- added iflag_bluish_dominated
+- Removed session_state variables not being used.
+- added `session_state[station_name] = {}` for granularity and keeping doys related to the station.
+
+## [v0.1.9] 
+- updated platforms
+- updated locations
+  
 ## [v0.1.8]
 - updated to python=3.12 
 
