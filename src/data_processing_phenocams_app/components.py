@@ -137,19 +137,19 @@ def side_menu_options(stations_names_list:list, is_platform_table: True) -> Tupl
         
         
         with d2c:
-            try:
-                value = doys.index(st.session_state[station_name].get('doy', min_doy))
-                if value < min_doy:
-                    value = min_doy
-            except:
-                value = min_doy
+            #try:
+            value = doys.index(st.session_state[station_name].get('doy', min_doy))
+                #if value < min_doy:
+                #    value = min_doy
+            #except:
+            #    value = min_doy
                 
             _doy = st.number_input(
                 label='Day of Year', 
-                min_value=min_doy, 
+                min_value=min_doy,
                 max_value=max_doy, 
                 step=1,
-                value=value
+                value=st.session_state[station_name].get('doy', value)
                  
                 )
             

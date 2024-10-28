@@ -267,7 +267,17 @@ def run():
                 #session_state('has_snow_presence', has_snow_presence)
                 
             
+                _enable_all = st.session_state[station_name].get('enable_all', False) 
                 if has_snow_presence:
+                    
+                    enable_all = st.checkbox(
+                        label='enable all',
+                        value= _enable_all
+                        )
+                    
+                    
+                    st.session_state[station_name]['enable_all'] = enable_all
+                     
                             
                     rois_snow_cols = st.columns(len(rois_list))
                     for i, roi_name in enumerate(rois_list):
@@ -276,11 +286,14 @@ def run():
                             roi_has_snow_presence =  records[catalog_guid][f'L3_{roi_name}_has_snow_presence'] 
                             snow_in_roi = st.checkbox(
                                 label=roi_name,
-                                value= roi_has_snow_presence,
+                                value= roi_has_snow_presence if not _enable_all else True,
                                 label_visibility='visible',
                                 key=f'{catalog_guid}_L3_{roi_name}_has_snow_presence'
                                 )
-                            rois_dict[catalog_guid][f'L3_{roi_name}_has_snow_presence'] = snow_in_roi
+                            if not _enable_all:
+                                rois_dict[catalog_guid][f'L3_{roi_name}_has_snow_presence'] = snow_in_roi
+                            else:
+                                rois_dict[catalog_guid][f'L3_{roi_name}_has_snow_presence'] = True
             
             #
             with c1:        
