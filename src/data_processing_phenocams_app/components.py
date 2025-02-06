@@ -146,7 +146,7 @@ def side_menu_options(stations_names_list:list, is_platform_table: True) -> Tupl
                 
             _doy = st.number_input(
                 label='Day of Year', 
-                min_value=min_doy,
+                min_value= 0,   #min_doy,
                 max_value=max_doy, 
                 step=1,
                 value=st.session_state[station_name].get('doy', value)
